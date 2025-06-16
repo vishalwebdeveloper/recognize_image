@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Image Upload & Comparison</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f2f2f2;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.08);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #4a4a4a;
+        }
+
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            background: #fafafa;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        .results {
+            margin-top: 25px;
+        }
+
+        .score {
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .hash { background: #e3f2fd; color: #1976d2; }
+        .color { background: #fff3e0; color: #f57c00; }
+        .object { background: #e8f5e9; color: #388e3c; }
+        .final { background: #ede7f6; color: #6a1b9a; }
+
+        .object-list {
+            background: #fce4ec;
+            color: #c2185b;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .preview {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .preview img {
+            max-width: 100%;
+            border-radius: 10px;
+            border: 1px solid #ccc;
+        }
+
+        @media(max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Upload Image for Matching</h2>
+
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.image }}
+        <button type="submit">Upload Image</button>
+    </form>
+
+    {% if final_avg is not None %}
+    <div class="results">
+        <div class="score hash">🔍 Hash Match: {{ hash_match }}%</div>
+        <div class="score color">🎨 Color Match: {{ color_match }}%</div>
+        <div class="score object">🧠 Object Match: {{ object_match }}%</div>
+        <div class="score final">📊 Final Match Score: {{ final_avg }}%</div>
+
+        <div class="object-list">
+            <strong>Detected Objects:</strong><br>
+            {% for obj in detected_objects %}
+                - {{ obj }}<br>
+            {% empty %}
+                No objects detected.
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+</body>
+</html>
