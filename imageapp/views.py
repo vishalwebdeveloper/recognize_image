@@ -6,22 +6,38 @@ from io import BytesIO
 from django.core.files.base import ContentFile
 import imagehash
 import numpy as np
-import random
 from ultralytics import YOLO
-import cv2
+import cv2,os,gc,torch
+from django.conf import settings
 
-model = YOLO('yolov8n.pt')  # Or 'yolov5s.pt' if you're using YOLOv5 model file
+torch.set_num_threads(1)  # ✅ Limit CPU usage
+
+# ✅ Environment tweaks to suppress caching/logging
+os.environ["YOLO_LOGGING"] = "false"
+os.environ["YOLO_CACHE"] = "false"
+# model = YOLO('yolov8n.pt')  # Or 'yolov5s.pt' if you're using YOLOv5 model file
+
+# ✅ Lazy loading YOLOv8n model
+def get_yolo_model():
+    if not hasattr(settings, 'YOLO_MODEL'):
+        settings.YOLO_MODEL = YOLO('yolov8n.pt')
+    return settings.YOLO_MODEL
 
 # Dummy object detection (simulate real ML)
 def detect_objects(pil_image):
     # ✅ Resize to 320x320 before detection
-    image = pil_image.resize((320, 320))
+    image = pil_image.resize((224, 224)) 
     image_np = np.array(image)
     image_cv = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
+    model = get_yolo_model()  # Get the YOLO model instance
 
     # ✅ Use .predict(), not direct call; disable fuse and force CPU
     results = model.predict(image_cv, device='cpu', fuse=False, verbose=False)[0]
     detected_labels = [model.names[int(cls)] for cls in results.boxes.cls]
+    # ✅ Cleanup
+    del image_np, image_cv, results
+    gc.collect()
+
     return list(set(detected_labels))
 
 def calculate_image_hash(image):
@@ -46,8 +62,9 @@ def upload_image(request):
         if form.is_valid():
             uploaded_file = request.FILES['image']
             uploaded_image = Image.open(uploaded_file).convert('RGB')
+            uploaded_image = uploaded_image.resize((320, 320))  # ✅ Resize for speed
             uploaded_hash = calculate_image_hash(uploaded_image)
-            uploaded_hist = uploaded_image.histogram()
+            uploaded_hist = uploaded_image.resize((32, 32)).convert('P').histogram()
             uploaded_objects = detect_objects(uploaded_image)
 
             existing_images = ImageModel.objects.all()
@@ -55,7 +72,8 @@ def upload_image(request):
             if not existing_images.exists():
                 # First image — directly save
                 buffer = BytesIO()
-                uploaded_image.save(buffer, format='JPEG')
+                # uploaded_image.save(buffer, format='JPEG')
+                uploaded_image.save(buffer, format='JPEG', quality=80, optimize=True)  # ✅ Compressed save
                 image_file = ContentFile(buffer.getvalue(), name=uploaded_file.name)
 
                 ImageModel.objects.create(
