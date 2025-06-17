@@ -10,17 +10,18 @@ import random
 from ultralytics import YOLO
 import cv2
 
-
 model = YOLO('yolov8n.pt')  # Or 'yolov5s.pt' if you're using YOLOv5 model file
+
 # Dummy object detection (simulate real ML)
-def detect_objects(image):
-    # Convert PIL image to OpenCV format
+def detect_objects(pil_image):
+    # ✅ Resize to 320x320 before detection
+    image = pil_image.resize((320, 320))
     image_np = np.array(image)
     image_cv = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
 
-    results = model(image_cv)[0]  # detect once
+    # ✅ Use .predict(), not direct call; disable fuse and force CPU
+    results = model.predict(image_cv, device='cpu', fuse=False, verbose=False)[0]
     detected_labels = [model.names[int(cls)] for cls in results.boxes.cls]
-
     return list(set(detected_labels))
 
 def calculate_image_hash(image):
